@@ -3,6 +3,8 @@ import os
 import csv
 from tkinter import *
 from tkinter import messagebox, ttk
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 # File to store inventory data
 INVENTORY_FILE = "inventory.json"
@@ -133,6 +135,52 @@ def export_to_csv():
             writer.writerow([name, details["quantity"], details["price"], details["category"]])
     messagebox.showinfo("Export Successful", "Inventory exported to 'inventory_export.csv'.")
 
+# Edit item directly in the Treeview
+def edit_item(event):
+    selected_item = listbox.selection()
+    if not selected_item:
+        return
+    
+    item = listbox.item(selected_item)
+    name = item["values"][0]
+    
+    entry_name.delete(0, END)
+    entry_name.insert(0, name)
+    entry_quantity.delete(0, END)
+    entry_quantity.insert(0, inventory[name]["quantity"])
+    entry_price.delete(0, END)
+    entry_price.insert(0, inventory[name]["price"])
+    entry_category.delete(0, END)
+    entry_category.insert(0, inventory[name]["category"])
+
+# Sort items by column
+def sort_treeview(col, reverse):
+    items = [(listbox.set(child, col), child) for child in listbox.get_children("")]
+    items.sort(reverse=reverse)
+    
+    for index, (val, child) in enumerate(items):
+        listbox.move(child, "", index)
+    
+    listbox.heading(col, command=lambda: sort_treeview(col, not reverse))
+
+# Generate graphical reports
+def generate_report():
+    names = list(inventory.keys())
+    quantities = [details["quantity"] for details in inventory.values()]
+    
+    fig, ax = plt.subplots()
+    ax.bar(names, quantities)
+    ax.set_xlabel("Items")
+    ax.set_ylabel("Quantity")
+    ax.set_title("Inventory Stock Levels")
+    
+    # Embed the plot in the Tkinter window
+    report_window = Toplevel(root)
+    report_window.title("Inventory Report")
+    canvas = FigureCanvasTkAgg(fig, master=report_window)
+    canvas.draw()
+    canvas.get_tk_widget().pack()
+
 # Clear input fields
 def clear_entries():
     entry_name.delete(0, END)
@@ -181,13 +229,17 @@ Button(root, text="Delete Item", command=delete_item).grid(row=6, column=0, padx
 Button(root, text="List Items", command=list_items).grid(row=6, column=1, padx=10, pady=5)
 Button(root, text="Check Low Stock", command=check_low_stock).grid(row=7, column=0, padx=10, pady=5)
 Button(root, text="Export to CSV", command=export_to_csv).grid(row=7, column=1, padx=10, pady=5)
+Button(root, text="Generate Report", command=generate_report).grid(row=8, column=0, padx=10, pady=5)
 
 # Create a Treeview to display inventory
 columns = ("Name", "Quantity", "Price", "Category")
 listbox = ttk.Treeview(root, columns=columns, show="headings")
 for col in columns:
-    listbox.heading(col, text=col)
-listbox.grid(row=8, column=0, columnspan=3, padx=10, pady=5)
+    listbox.heading(col, text=col, command=lambda c=col: sort_treeview(c, False))
+listbox.grid(row=9, column=0, columnspan=3, padx=10, pady=5)
+
+# Bind double-click to edit item
+listbox.bind("<Double-1>", edit_item)
 
 # Load and display inventory items on startup
 list_items()
