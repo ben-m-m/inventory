@@ -1,0 +1,12 @@
+{
+    "Red bull": {
+        "quantity": 12,
+        "price": 250.0,
+        "category": "Energy Drinks"
+    },
+    "Dasani !litre": {
+        "quantity": 12,
+        "price": 50.0,
+        "category": "Beverage"
+    }
+}
