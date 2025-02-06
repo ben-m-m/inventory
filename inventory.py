@@ -27,22 +27,24 @@ def add_item():
     quantity = entry_quantity.get().strip()
     price = entry_price.get().strip()
     category = entry_category.get().strip()
+    unit = unit_var.get().strip()
     
-    if not name or not quantity or not price or not category:
+    if not name or not quantity or not price or not category or not unit:
         messagebox.showwarning("Input Error", "Please fill all fields.")
         return
     
     try:
-        quantity = int(quantity)
+        quantity = float(quantity)  # Allow decimal quantities for units like liters or kilograms
         price = float(price)
     except ValueError:
-        messagebox.showwarning("Input Error", "Quantity must be a whole number and price must be a number.")
+        messagebox.showwarning("Input Error", "Quantity and price must be numbers.")
         return
     
     inventory[name] = {
         "quantity": quantity,
         "price": price,
-        "category": category
+        "category": category,
+        "unit": unit
     }
     save_inventory(inventory)
     messagebox.showinfo("Success", f"Item '{name}' added to inventory.")
@@ -56,12 +58,13 @@ def update_item():
         quantity = entry_quantity.get().strip()
         price = entry_price.get().strip()
         category = entry_category.get().strip()
+        unit = unit_var.get().strip()
         
         if quantity:
             try:
-                inventory[name]["quantity"] = int(quantity)
+                inventory[name]["quantity"] = float(quantity)
             except ValueError:
-                messagebox.showwarning("Input Error", "Quantity must be a whole number.")
+                messagebox.showwarning("Input Error", "Quantity must be a number.")
                 return
         if price:
             try:
@@ -71,6 +74,8 @@ def update_item():
                 return
         if category:
             inventory[name]["category"] = category
+        if unit:
+            inventory[name]["unit"] = unit
         
         save_inventory(inventory)
         messagebox.showinfo("Success", f"Item '{name}' updated.")
@@ -98,7 +103,7 @@ def list_items():
         listbox.insert("", "end", values=("Inventory is empty.",))
     else:
         for name, details in inventory.items():
-            listbox.insert("", "end", values=(name, details["quantity"], details["price"], details["category"]))
+            listbox.insert("", "end", values=(name, details["quantity"], details["price"], details["category"], details["unit"]))
 
 # Search for an item in the inventory
 def search_item():
@@ -110,7 +115,7 @@ def search_item():
     
     for name, details in inventory.items():
         if search_term in name.lower():
-            listbox.insert("", "end", values=(name, details["quantity"], details["price"], details["category"]))
+            listbox.insert("", "end", values=(name, details["quantity"], details["price"], details["category"], details["unit"]))
 
 # Check for low stock items
 def check_low_stock():
@@ -119,7 +124,7 @@ def check_low_stock():
     
     for name, details in inventory.items():
         if details["quantity"] < low_stock_threshold:
-            low_stock_items.append(name)
+            low_stock_items.append(f"{name} ({details['quantity']} {details['unit']})")
     
     if low_stock_items:
         messagebox.showwarning("Low Stock Alert", f"The following items are low in stock: {', '.join(low_stock_items)}")
@@ -130,9 +135,9 @@ def check_low_stock():
 def export_to_csv():
     with open("inventory_export.csv", "w", newline="") as file:
         writer = csv.writer(file)
-        writer.writerow(["Name", "Quantity", "Price", "Category"])
+        writer.writerow(["Name", "Quantity", "Price", "Category", "Unit"])
         for name, details in inventory.items():
-            writer.writerow([name, details["quantity"], details["price"], details["category"]])
+            writer.writerow([name, details["quantity"], details["price"], details["category"], details["unit"]])
     messagebox.showinfo("Export Successful", "Inventory exported to 'inventory_export.csv'.")
 
 # Edit item directly in the Treeview
@@ -152,6 +157,7 @@ def edit_item(event):
     entry_price.insert(0, inventory[name]["price"])
     entry_category.delete(0, END)
     entry_category.insert(0, inventory[name]["category"])
+    unit_var.set(inventory[name]["unit"])
 
 # Sort items by column
 def sort_treeview(col, reverse):
@@ -167,12 +173,17 @@ def sort_treeview(col, reverse):
 def generate_report():
     names = list(inventory.keys())
     quantities = [details["quantity"] for details in inventory.values()]
+    units = [details["unit"] for details in inventory.values()]
     
     fig, ax = plt.subplots()
     ax.bar(names, quantities)
     ax.set_xlabel("Items")
     ax.set_ylabel("Quantity")
     ax.set_title("Inventory Stock Levels")
+    
+    # Add unit labels to the bars
+    for i, (name, unit) in enumerate(zip(names, units)):
+        ax.text(i, quantities[i], f"{quantities[i]} {unit}", ha="center", va="bottom")
     
     # Embed the plot in the Tkinter window
     report_window = Toplevel(root)
@@ -187,6 +198,7 @@ def clear_entries():
     entry_quantity.delete(0, END)
     entry_price.delete(0, END)
     entry_category.delete(0, END)
+    unit_var.set("pieces")  # Reset unit to default
 
 # Initialize inventory
 inventory = load_inventory()
@@ -216,27 +228,33 @@ Label(root, text="Category:").grid(row=3, column=0, padx=10, pady=5)
 entry_category = Entry(root)
 entry_category.grid(row=3, column=1, padx=10, pady=5)
 
+Label(root, text="Unit:").grid(row=4, column=0, padx=10, pady=5)
+unit_var = StringVar(value="pieces")  # Default unit
+unit_options = ["pieces", "crates", "boxes", "liters", "kilograms"]
+unit_menu = OptionMenu(root, unit_var, *unit_options)
+unit_menu.grid(row=4, column=1, padx=10, pady=5)
+
 # Search functionality
-Label(root, text="Search:").grid(row=4, column=0, padx=10, pady=5)
+Label(root, text="Search:").grid(row=5, column=0, padx=10, pady=5)
 entry_search = Entry(root)
-entry_search.grid(row=4, column=1, padx=10, pady=5)
-Button(root, text="Search", command=search_item).grid(row=4, column=2, padx=10, pady=5)
+entry_search.grid(row=5, column=1, padx=10, pady=5)
+Button(root, text="Search", command=search_item).grid(row=5, column=2, padx=10, pady=5)
 
 # Create and place buttons
-Button(root, text="Add Item", command=add_item).grid(row=5, column=0, padx=10, pady=5)
-Button(root, text="Update Item", command=update_item).grid(row=5, column=1, padx=10, pady=5)
-Button(root, text="Delete Item", command=delete_item).grid(row=6, column=0, padx=10, pady=5)
-Button(root, text="List Items", command=list_items).grid(row=6, column=1, padx=10, pady=5)
-Button(root, text="Check Low Stock", command=check_low_stock).grid(row=7, column=0, padx=10, pady=5)
-Button(root, text="Export to CSV", command=export_to_csv).grid(row=7, column=1, padx=10, pady=5)
-Button(root, text="Generate Report", command=generate_report).grid(row=8, column=0, padx=10, pady=5)
+Button(root, text="Add Item", command=add_item).grid(row=6, column=0, padx=10, pady=5)
+Button(root, text="Update Item", command=update_item).grid(row=6, column=1, padx=10, pady=5)
+Button(root, text="Delete Item", command=delete_item).grid(row=7, column=0, padx=10, pady=5)
+Button(root, text="List Items", command=list_items).grid(row=7, column=1, padx=10, pady=5)
+Button(root, text="Check Low Stock", command=check_low_stock).grid(row=8, column=0, padx=10, pady=5)
+Button(root, text="Export to CSV", command=export_to_csv).grid(row=8, column=1, padx=10, pady=5)
+Button(root, text="Generate Report", command=generate_report).grid(row=9, column=0, padx=10, pady=5)
 
 # Create a Treeview to display inventory
-columns = ("Name", "Quantity", "Price", "Category")
+columns = ("Name", "Quantity", "Price", "Category", "Unit")
 listbox = ttk.Treeview(root, columns=columns, show="headings")
 for col in columns:
     listbox.heading(col, text=col, command=lambda c=col: sort_treeview(c, False))
-listbox.grid(row=9, column=0, columnspan=3, padx=10, pady=5)
+listbox.grid(row=10, column=0, columnspan=3, padx=10, pady=5)
 
 # Bind double-click to edit item
 listbox.bind("<Double-1>", edit_item)
