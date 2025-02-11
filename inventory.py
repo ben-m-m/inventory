@@ -23,12 +23,40 @@ def save_inventory(inventory):
     with open(INVENTORY_FILE, "w") as file:
         json.dump(inventory, file, indent=4)
 
+#Add units
+def add_unit():
+    new_unit = entry_new_unit.get().strip()
+    conversion_rate = entry_conversion_rate.get().strip()
+    
+    if not new_unit or not conversion_rate:
+        messagebox.showwarning("Input Error", "Please enter both unit name and conversion rate.")
+        return
+    
+    try:
+        conversion_rate = float(conversion_rate)
+    except ValueError:
+        messagebox.showwarning("Input Error", "Conversion rate must be a number.")
+        return
+    
+    units[new_unit] = conversion_rate
+    save_units(units)
+    refresh_unit_menu()
+    messagebox.showinfo("Success", f"Unit '{new_unit}' added successfully.")
+    entry_new_unit.delete(0, END)
+    entry_conversion_rate.delete(0, END)
+
 # Load custom units from file
 def load_units():
     if os.path.exists(UNITS_FILE):
         with open(UNITS_FILE, "r") as file:
             return json.load(file)
     return {"pieces": 1}  # Default unit with conversion rate 1
+
+#Auto-update Unit Dropdown
+def refresh_unit_menu():
+    unit_menu['menu'].delete(0, 'end')  # Clear existing options
+    for unit in units.keys():
+        unit_menu['menu'].add_command(label=unit, command=lambda u=unit: unit_var.set(u))
 
 # Save custom units to file
 def save_units(units):
@@ -222,6 +250,13 @@ units = load_units()
 root = Tk()
 root.title("Inventory Management System")
 
+#load units on startup
+units = load_units()
+unit_options = list(units.keys())
+unit_var = StringVar(value=unit_options[0])  # Set default unit
+unit_menu = OptionMenu(root, unit_var, *unit_options)
+unit_menu.grid(row=4, column=1, padx=10, pady=5)
+
 # Use ttk for styling
 style = ttk.Style()
 style.theme_use("clam")
@@ -248,6 +283,16 @@ unit_var = StringVar(value="pieces")  # Default unit
 unit_options = list(units.keys())
 unit_menu = OptionMenu(root, unit_var, *unit_options)
 unit_menu.grid(row=4, column=1, padx=10, pady=5)
+
+Label(root, text="New Unit:").grid(row=6, column=0, padx=10, pady=5)
+entry_new_unit = Entry(root)
+entry_new_unit.grid(row=6, column=1, padx=10, pady=5)
+
+Label(root, text="Conversion Rate:").grid(row=7, column=0, padx=10, pady=5)
+entry_conversion_rate = Entry(root)
+entry_conversion_rate.grid(row=7, column=1, padx=10, pady=5)
+
+Button(root, text="Add Unit", command=add_unit).grid(row=7, column=2, padx=10, pady=5)
 
 # Search functionality
 Label(root, text="Search:").grid(row=5, column=0, padx=10, pady=5)
