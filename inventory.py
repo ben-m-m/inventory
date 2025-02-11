@@ -8,6 +8,8 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 # File to store inventory data
 INVENTORY_FILE = "inventory.json"
+# File to store custom units and conversion rates
+UNITS_FILE = "units.json"
 
 # Load inventory from file
 def load_inventory():
@@ -20,6 +22,18 @@ def load_inventory():
 def save_inventory(inventory):
     with open(INVENTORY_FILE, "w") as file:
         json.dump(inventory, file, indent=4)
+
+# Load custom units from file
+def load_units():
+    if os.path.exists(UNITS_FILE):
+        with open(UNITS_FILE, "r") as file:
+            return json.load(file)
+    return {"pieces": 1}  # Default unit with conversion rate 1
+
+# Save custom units to file
+def save_units(units):
+    with open(UNITS_FILE, "w") as file:
+        json.dump(units, file, indent=4)
 
 # Add a new item to the inventory
 def add_item():
@@ -34,7 +48,7 @@ def add_item():
         return
     
     try:
-        quantity = float(quantity)  # Allow decimal quantities for units like liters or kilograms
+        quantity = float(quantity)
         price = float(price)
     except ValueError:
         messagebox.showwarning("Input Error", "Quantity and price must be numbers.")
@@ -200,8 +214,9 @@ def clear_entries():
     entry_category.delete(0, END)
     unit_var.set("pieces")  # Reset unit to default
 
-# Initialize inventory
+# Initialize inventory and units
 inventory = load_inventory()
+units = load_units()
 
 # Create the main window
 root = Tk()
@@ -230,7 +245,7 @@ entry_category.grid(row=3, column=1, padx=10, pady=5)
 
 Label(root, text="Unit:").grid(row=4, column=0, padx=10, pady=5)
 unit_var = StringVar(value="pieces")  # Default unit
-unit_options = ["pieces", "crates", "boxes", "liters", "kilograms"]
+unit_options = list(units.keys())
 unit_menu = OptionMenu(root, unit_var, *unit_options)
 unit_menu.grid(row=4, column=1, padx=10, pady=5)
 
